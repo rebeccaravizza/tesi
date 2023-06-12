@@ -3,8 +3,8 @@ curr_fold = cd;
 %addpath([curr_fold(1:end-19) '\A_PREP_PROC_FOLDER']);
 %load("data_filt_2022_12_20_1.mat");
 
-addpath("C:\Users\rebby\Desktop\TESI\PreprocessedData\Test_2022_12_20");
-load("data_filt_2022_12_20_6.mat");
+%addpath("C:\Users\rebby\Desktop\TESI\PreprocessedData\Test_2022_12_20");
+load("data_filt_2022_12_20_7.mat");
 
 win = 60000; % # of samples of the window: 60000/fs / 60 = 10 min (600 sec) --> da ripetere 7 volte per coprire l'intero segnale
 for ide_singola = 2:7
@@ -47,18 +47,20 @@ for ide_singola = 2:7
     
     %% IDENTIFICATION OF DIFFERENT ORDERS
     % Preallocate ID to optimize code execution
-    ID = cell(length(ssi.n_min:ssi.n_step:ssi.n_max), 1);
+    %ID = cell(length(ssi.n_min:ssi.n_step:ssi.n_max), 1);
     count = 1;
     ssi.n_min
     ssi.n_step
-    ssi.n_max
+    ssi_max = ssi.n_max;
+    increment = ssi.n_min:ssi.n_step:ssi.n_max;
     for i2=ssi.n_min:ssi.n_step:ssi.n_max
-        n_block=2*ssi.n_max;  % n_block Hankel matrix
+        n_block=2*ssi_max;  % n_block Hankel matrix
         % {ID} colonne  = ordine  del sistema
         % [ID] righe = modi estratti
         % [ID] colonne  = frequenza, smorzamento, forma modale
         ID{count,1}=SSI_opt(signal,n_block,fs,i2);
-        count=count+1;
+        count = count + 1;
+        disp(count);
     end
     
     % Results
@@ -138,49 +140,38 @@ for ide_singola = 2:7
     end
     
     % conditions of stabilization
-    ID = zeros(sum(cellfun(@(x) size(x, 1), IDENT_AUG)), nc + 8);
-    app = zeros(1, nc + 8);
-
-    idx = 1;
-
-    for i1 = 1:size(IDENT_AUG, 1)
-        if ~isempty(IDENT_AUG{i1})
-            for i2 = 1:size(IDENT_AUG{i1}, 1)
-                app(1:nc) = IDENT_AUG{i1}(i2, :);
-                app(nc + 1) = ssi.n_ord(i1);
-
-                % STABILE PER TUTTE E TRE LE CONDIZIONI
-                if (app(nc + 1) > stab.de_f) || ...
-                   (app(nc + 2) > stab.de_z) || ...
-                   (app(nc + 3) < stab.MAC)
-                    app(nc + 5) = 0;
+    ID=[];
+    app=[];
+    for i1=1:size(IDENT_AUG,1)
+        if isempty(IDENT_AUG{i1})==0
+            for i2=1:size(IDENT_AUG{i1},1)
+                app=IDENT_AUG{i1}(i2,:);
+                app=[app, ssi.n_ord(i1)];
+                %STABILE PER TUTTE E TRE LE CONDIZIONI
+                if (IDENT_AUG{i1}(i2,nc+1)>stab.de_f) || (IDENT_AUG{i1}(i2,nc+2)>stab.de_z) || (IDENT_AUG{i1}(i2,nc+3)<stab.MAC)
+                    app(:,nc+5)=0;
                 else
-                    app(nc + 5) = 1;
+                    app(:,nc+5)=1;
                 end
-
-                % STABILITA PER FREQUENZA
-                if (app(nc + 1) > stab.de_f)
-                    app(nc + 6) = 0;
+                %STABILITA PER FREQUENZA
+                if (IDENT_AUG{i1}(i2,nc+1)>stab.de_f)
+                    app(:,nc+6)=0;
                 else
-                    app(nc + 6) = 1;
+                    app(:,nc+6)=1;
                 end
-
-                % STABILITA PER SMORZAMENTO
-                if (app(nc + 2) > stab.de_z)
-                    app(nc + 7) = 0;
+                %STABILITA PER SMORZAMENTO
+                if (IDENT_AUG{i1}(i2,nc+2)>stab.de_z)
+                    app(:,nc+7)=0;
                 else
-                    app(nc + 7) = 1;
+                    app(:,nc+7)=1;
                 end
-
-                % STABILITA PER MAC
-                if (app(nc + 3) < stab.MAC)
-                    app(nc + 8) = 0;
+                %STABILITA PER MAC
+                if (IDENT_AUG{i1}(i2,nc+3)<stab.MAC)
+                    app(:,nc+8)=0;
                 else
-                    app(nc + 8) = 1;
+                    app(:,nc+8)=1;
                 end
-
-                ID(idx, :) = app;
-                idx = idx + 1;
+                ID=[ID;app];
             end
         end
     end
@@ -221,14 +212,13 @@ for ide_singola = 2:7
     IDord=[nID';IDord']'; %|1|frequenze|smorz|forme modali|
     clear nID
     
-    IDordMAC = compute_mac(IDord(:, 4:end)', IDord(:, 4:end)');
-    IDordMAC_D = ones(size(IDordMAC)) - IDordMAC; % Matrice MAC dissimilità
-
-    % AGGIUNGO RIGA PER AUMENTARE LA DIFFERENZA DI MAC
-    posNO = IDordMAC_D > (1 - clusterA.dif_minMAC); % ACCETTO MAC 90%
-    IDordMAC_D(posNO) = 1;
-
-    clear posNO;
+    IDordMAC=compute_mac(IDord(:,4:end)',IDord(:,4:end)');
+    MAC_one=ones(size(IDordMAC,1),size(IDordMAC,1));
+    IDordMAC_D=MAC_one-IDordMAC; %Matrice MAC dissimilità
+    %AGGIUNGO RIGA PER AUMENTARE LA DIFFERENZA DI MAC
+    posNO=find(IDordMAC_D>(1-clusterA.dif_minMAC));% ACCETTO MAC 90%
+    IDordMAC_D(posNO)=1;
+    clear posNO
     
     % Calcolo differenza (valori accettabili tra 0 e 0.05)
     ID_ordFREQ=compute_freq2(IDord(:,2),IDord(:,2));
@@ -285,8 +275,8 @@ for ide_singola = 2:7
     max_rows = q_clustz;
 
     % Preallocate CLUSTER_TOT with zeros
-    CLUSTER_TOT = zeros(max_rows, ch_num + 8); %Matrice dove saranno contenute tutte le frequenze finali clusterizzate
-    CLUSTER_SCART = zeros(max_rows_scart, ch_num + 4);%Matrice dove saranno contenute tutte le frequenze scartate
+    CLUSTER_TOT = []; %Matrice dove saranno contenute tutte le frequenze finali clusterizzate
+    CLUSTER_SCART = [];%Matrice dove saranno contenute tutte le frequenze scartate
 
     for n_cluster = 1:q_clustz
         q = find(CLUSTZ(:,1) == n_cluster); % numero di frequenze presenti nel cluster
@@ -433,26 +423,27 @@ legend ('Spurius Modes','Stable Modes');
 %clustering
 figure
 plot(dataF(:,1),dataF(:,2),'ro');
+c = gcf;
 hold on
 plot (CLUSTER_TOT(:,3),CLUSTER_TOT(:,4),'+b','markersize',13,'linewidth',2);
+k = gcf;
 hold on;
 plot (CLUSTER_TOT(:,3),CLUSTER_TOT(:,4),'oc','markersize',5,'linewidth',1.5,'MarkerFaceColor','c','MarkerEdgeColor','b');
+m = gcf;
 xlim([clusterA.f_min clusterA.f_up]);
 ylim([stab.d_min stab.d_max]);
 xlabel('Frequency [Hz]');
 ylabel('Damping ratio [-]');
 legend ('Candidate Modes','Identified Modes');
-
+pippos = gcf;
 % Specifica il percorso completo della cartella di destinazione
-folder = "C:\Users\rebby\Desktop\TESI\IdentificatedDataFigures\data_filt_2022_12_20";
+% folder = "C:\Users\rebby\Desktop\TESI\IdentificatedDataFigures\data_filt_2022_12_20";
 
 % Specifica il nome del file e il formato desiderato (ad esempio 'figura.png')
-filename = 'Test_20.12.2023_6.png';
-
+filename = 'Test_20.12.2023_7.png';
+spippo = gcf;
 % Crea il percorso completo del file
-filepath = fullfile(folder, filename);
-
 % Salva la figura nel percorso specificato
-saveas(gcf, filepath);
+saveas(gcf, filename);
 %%
 toc;
