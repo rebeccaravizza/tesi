@@ -4,7 +4,7 @@ curr_fold = cd;
 %load("data_filt_2022_12_20_1.mat");
 
 addpath("C:\Users\rebby\Desktop\TESI\PreprocessedData\Test_2022_12_20");
-load("data_filt_2022_12_20_1.mat");
+load("data_filt_2022_12_20_6.mat");
 
 win = 60000; % # of samples of the window: 60000/fs / 60 = 10 min (600 sec) --> da ripetere 7 volte per coprire l'intero segnale
 for ide_singola = 2:7
@@ -443,5 +443,16 @@ xlabel('Frequency [Hz]');
 ylabel('Damping ratio [-]');
 legend ('Candidate Modes','Identified Modes');
 
+% Specifica il percorso completo della cartella di destinazione
+folder = "C:\Users\rebby\Desktop\TESI\IdentificatedDataFigures\data_filt_2022_12_20";
+
+% Specifica il nome del file e il formato desiderato (ad esempio 'figura.png')
+filename = 'Test_20.12.2023_6.png';
+
+% Crea il percorso completo del file
+filepath = fullfile(folder, filename);
+
+% Salva la figura nel percorso specificato
+saveas(gcf, filepath);
 %%
 toc;
