@@ -1,10 +1,10 @@
 close all; clear; clc;
 curr_fold = cd;
-addpath([curr_fold(1:end-19) '\A_PREP_PROC_FOLDER']);
+addpath([curr_fold, '\preprocessedData\Test_2022_12_20']);
 load data_filt_2022_12_20_6;
 
 win = 60000; % # of samples of the window: 60000/fs / 60 = 10 min (600 sec) --> da ripetere 7 volte per coprire l'intero segnale
-for ide_singola = 2:7
+for ide_singola = 2:3
     clearvars -except ide_singola win data curr_fold
     addpath([curr_fold '\functions']);
     tic;

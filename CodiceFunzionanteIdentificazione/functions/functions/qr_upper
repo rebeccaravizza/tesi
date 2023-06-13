@@ -1,0 +1,36 @@
+#include <mex.h>
+#include <lapack.h>
+
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
+    // Check input/output arguments
+    if (nrhs != 1 || nlhs > 1) {
+        mexErrMsgIdAndTxt("qr_upper_triangular:InvalidInputOutput",
+                          "Invalid number of input/output arguments.");
+    }
+    
+    // Get input matrix Y from MATLAB
+    double* Y = mxGetPr(prhs[0]);
+    mwSize m = mxGetM(prhs[0]);
+    mwSize n = mxGetN(prhs[0]);
+    
+    // Create output matrix R
+    plhs[0] = mxCreateDoubleMatrix(n, n, mxREAL);
+    double* R = mxGetPr(plhs[0]);
+    
+    // Compute the QR decomposition using LAPACK
+    int info;
+    dgeqrf(&n, &n, Y, &m, R, NULL, &info);
+    
+    // Check for errors
+    if (info != 0) {
+        mexErrMsgIdAndTxt("qr_upper_triangular:QRDecompositionFailed",
+                          "QR decomposition failed with error code: %d.", info);
+    }
+    
+    // Zero out the lower triangular part of R
+    for (int j = 0; j < n; j++) {
+        for (int i = 0; i < j; i++) {
+            R[i + j * n] = 0.0;
+        }
+    }
+}
